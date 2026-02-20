@@ -132,14 +132,28 @@ function renderChat() {
   if (!chatEl || !activeConversation) return;
 
   chatEl.innerHTML = "";
+
   activeConversation.messages.forEach(m => {
     const div = document.createElement("div");
     div.className = `message ${m.role}`;
-    div.innerText = m.content;
+
+    if (m.inputType === "voice") {
+      const label = document.createElement("div");
+      label.innerText = "🎙 Voice message";
+      label.style.fontSize = "0.8em";
+      div.appendChild(label);
+    }
+
+    const text = document.createElement("div");
+    text.innerText = m.content;
+    div.appendChild(text);
+
     chatEl.appendChild(div);
   });
+
   chatEl.scrollTop = chatEl.scrollHeight;
 }
+
 
 /* ---------------- TEXT CHAT ---------------- */
 
@@ -227,15 +241,34 @@ function startMic() {
   recording = true;
   if (micBtn) micBtn.innerText = "⏹";
 
+  const convParam = activeConversation.id
+    ? `&conversation_id=${activeConversation.id}`
+    : "";
+
   ws = new WebSocket(
-    `${API.replace("http", "ws")}/api/voice-chat/ws?token=${token}`
+    `${API.replace("http", "ws")}/api/voice-chat/ws?token=${token}${convParam}`
   );
+
   ws.binaryType = "arraybuffer";
 
   ws.onmessage = e => {
     if (typeof e.data === "string") {
       const msg = JSON.parse(e.data);
-      if (msg.type === "reply_text") {
+
+      if (msg.type === "conversation_created") {
+        activeConversation.id = msg.conversation_id;
+      }
+
+      if (msg.type === "user_message") {
+        activeConversation.messages.push({
+          role: "user",
+          content: msg.text,
+          inputType: "voice"
+        });
+        renderChat();
+      }
+
+      if (msg.type === "assistant_message") {
         activeConversation.messages.push({
           role: "assistant",
           content: msg.text
@@ -243,6 +276,7 @@ function startMic() {
         renderChat();
       }
     } else {
+      // play assistant audio
       new Audio(URL.createObjectURL(new Blob([e.data]))).play();
     }
   };
@@ -272,6 +306,7 @@ function stopMic() {
   if (stream) stream.getTracks().forEach(t => t.stop());
   if (audioContext) audioContext.close();
 }
+
 
 /* ---------------- GLOBAL EXPORTS ---------------- */
 
