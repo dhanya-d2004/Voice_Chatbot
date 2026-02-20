@@ -1,117 +1,283 @@
 const API = "http://localhost:8000";
-console.log("app.js loaded on", window.location.pathname);
 
-/* ---------------- AUTH FUNCTIONS ---------------- */
+/* ---------------- DOM REFERENCES ---------------- */
+
+const micBtn = document.getElementById("micBtn");
+const chatEl = document.getElementById("chat");
+
+/* ---------------- AUTH ---------------- */
 
 async function signup() {
-  const emailEl = document.getElementById("email");
-  const passwordEl = document.getElementById("password");
-  const msgEl = document.getElementById("msg");
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("msg");
 
-  if (!emailEl || !passwordEl || !msgEl) return;
+  msg.innerText = "Signing up...";
 
-  const res = await fetch(`${API}/auth/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: emailEl.value,
-      password: passwordEl.value
-    })
-  });
+  try {
+    const res = await fetch(`${API}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
 
-  msgEl.innerText = res.ok
-    ? "Signup successful. You can login now."
-    : "Signup failed";
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.innerText = data.detail || "Signup failed";
+      return;
+    }
+
+    msg.innerText = "Signup successful. You can login now.";
+  } catch (err) {
+    console.error(err);
+    msg.innerText = "Cannot connect to server";
+  }
 }
 
 async function login() {
-  const emailEl = document.getElementById("email");
-  const passwordEl = document.getElementById("password");
-  const msgEl = document.getElementById("msg");
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("msg");
 
-  if (!emailEl || !passwordEl || !msgEl) return;
+  msg.innerText = "Logging in...";
 
   const form = new URLSearchParams();
-  form.append("username", emailEl.value);
-  form.append("password", passwordEl.value);
+  form.append("username", email);
+  form.append("password", password);
 
-  const res = await fetch(`${API}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form.toString()
-  });
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString()
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!res.ok) {
-    msgEl.innerText = data.detail || "Login failed";
-    return;
+    if (!res.ok) {
+      msg.innerText = data.detail || "Login failed";
+      return;
+    }
+
+    localStorage.setItem("token", data.access_token);
+    location.href = "chat.html";
+  } catch (err) {
+    console.error(err);
+    msg.innerText = "Cannot connect to server";
   }
-
-  localStorage.setItem("token", data.access_token);
-  window.location.href = "chat.html";
 }
 
 function logout() {
   localStorage.removeItem("token");
-  window.location.href = "index.html";
+  location.href = "index.html";
 }
 
-/* ---------------- CHAT PAGE LOGIC ---------------- */
+/* ---------------- CHAT STATE ---------------- */
 
-const chatEl = document.getElementById("chat");
-const userInfoEl = document.getElementById("userInfo");
+const token = localStorage.getItem("token");
 
-if (chatEl && userInfoEl) {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    window.location.href = "index.html";
-  }
+let conversations = [];
+let activeConversation = null;
+
+/* ---------------- INIT CHAT PAGE ---------------- */
+
+if (chatEl) {
+  if (!token) location.href = "index.html";
 
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
-    userInfoEl.innerText = payload.email || payload.sub;
+    document.getElementById("userInfo").innerText = payload.email;
   } catch {
-    logout();
+    localStorage.removeItem("token");
+    location.href = "index.html";
   }
+
+  newConversation();
 }
 
-/* ---------------- CHAT HELPERS ---------------- */
+/* ---------------- CONVERSATIONS ---------------- */
 
-function addMessage(text, cls) {
-  if (!chatEl) return;
-  const div = document.createElement("div");
-  div.className = `message ${cls}`;
-  div.innerText = text;
-  chatEl.appendChild(div);
-  div.scrollIntoView();
+function newConversation() {
+  const conv = {
+    id: null, // backend generates UUID
+    title: "New chat",
+    messages: []
+  };
+  conversations.push(conv);
+  activeConversation = conv;
+  renderConversations();
+  renderChat();
+}
+
+function renderConversations() {
+  const list = document.getElementById("conversations");
+  if (!list) return;
+
+  list.innerHTML = "";
+  conversations.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "conversation" + (c === activeConversation ? " active" : "");
+    div.innerText = c.title;
+    div.onclick = () => {
+      activeConversation = c;
+      renderConversations();
+      renderChat();
+    };
+    list.appendChild(div);
+  });
+}
+
+function renderChat() {
+  if (!chatEl || !activeConversation) return;
+
+  chatEl.innerHTML = "";
+  activeConversation.messages.forEach(m => {
+    const div = document.createElement("div");
+    div.className = `message ${m.role}`;
+    div.innerText = m.content;
+    chatEl.appendChild(div);
+  });
+  chatEl.scrollTop = chatEl.scrollHeight;
 }
 
 /* ---------------- TEXT CHAT ---------------- */
 
-async function sendText() {
-  const input = document.getElementById("textInput");
-  const token = localStorage.getItem("token");
-  if (!input || !token) return;
+function onEnter(e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendText();
+  }
+}
 
+async function sendText() {
+  if (!activeConversation) newConversation();
+
+  const input = document.getElementById("textInput");
   const text = input.value.trim();
   if (!text) return;
 
   input.value = "";
-  addMessage(text, "user");
 
-  const res = await fetch(`${API}/api/text-chat`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      conversation_id: "default",
-      messages: [{ role: "user", content: text }]
-    })
+  activeConversation.messages.push({
+    role: "user",
+    content: text
   });
+  renderChat();
 
-  const data = await res.json();
-  addMessage(data.reply, "bot");
+  let res, data;
+  try {
+    res = await fetch(`${API}/api/text-chat`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        conversation_id: activeConversation.id,
+        messages: activeConversation.messages
+      })
+    });
+
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error("Invalid JSON");
+    }
+  } catch (err) {
+    console.error(err);
+    activeConversation.messages.push({
+      role: "assistant",
+      content: "⚠️ Server unreachable"
+    });
+    renderChat();
+    return;
+  }
+
+  if (!res.ok) {
+    activeConversation.messages.push({
+      role: "assistant",
+      content: data.detail || "⚠️ Request failed"
+    });
+    renderChat();
+    return;
+  }
+
+  if (!activeConversation.id) {
+    activeConversation.id = data.conversation_id;
+  }
+
+  activeConversation.messages.push({
+    role: "assistant",
+    content: data.reply
+  });
+  renderChat();
 }
+
+/* ---------------- VOICE ---------------- */
+
+let ws, audioContext, processor, stream;
+let recording = false;
+
+function toggleMic() {
+  recording ? stopMic() : startMic();
+}
+
+function startMic() {
+  recording = true;
+  if (micBtn) micBtn.innerText = "⏹";
+
+  ws = new WebSocket(
+    `${API.replace("http", "ws")}/api/voice-chat/ws?token=${token}`
+  );
+  ws.binaryType = "arraybuffer";
+
+  ws.onmessage = e => {
+    if (typeof e.data === "string") {
+      const msg = JSON.parse(e.data);
+      if (msg.type === "reply_text") {
+        activeConversation.messages.push({
+          role: "assistant",
+          content: msg.text
+        });
+        renderChat();
+      }
+    } else {
+      new Audio(URL.createObjectURL(new Blob([e.data]))).play();
+    }
+  };
+
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+    stream = s;
+    audioContext = new AudioContext({ sampleRate: 16000 });
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+    audioContext.createMediaStreamSource(stream).connect(processor);
+    processor.connect(audioContext.destination);
+
+    processor.onaudioprocess = e => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(e.inputBuffer.getChannelData(0).buffer);
+      }
+    };
+  });
+}
+
+function stopMic() {
+  recording = false;
+  if (micBtn) micBtn.innerText = "🎙";
+
+  if (ws) ws.send("END");
+  if (processor) processor.disconnect();
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (audioContext) audioContext.close();
+}
+
+/* ---------------- GLOBAL EXPORTS ---------------- */
+
+window.onEnter = onEnter;
+window.login = login;
+window.signup = signup;
+window.logout = logout;
+window.sendText = sendText;
+window.toggleMic = toggleMic;

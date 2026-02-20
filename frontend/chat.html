@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Voice AI</title>
+  <title>Voice AI – Chat</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,19 +15,20 @@
 
     <div class="main">
       <div class="header">
-        <span id="userEmail"></span>
+        <span id="userInfo"></span>
         <button onclick="logout()">Logout</button>
       </div>
 
       <div id="chat" class="chat"></div>
 
       <div class="input-bar">
-        <input id="textInput" placeholder="Type a message…" onkeydown="handleEnter(event)">
+        <input id="textInput" placeholder="Type a message…" onkeydown="onEnter(event)">
         <button onclick="sendText()">➤</button>
-        <button onclick="toggleMic()" id="micBtn">🎙</button>
+        <button id="micBtn" onclick="toggleMic()">🎙</button>
       </div>
     </div>
   </div>
-<script src="app.js"></script>
+
+  <script src="app.js"></script>
 </body>
 </html>
