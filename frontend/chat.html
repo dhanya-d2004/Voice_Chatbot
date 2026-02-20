@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Voice AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar">
+      <h3>Conversations</h3>
+      <div id="conversations"></div>
+      <button onclick="newConversation()">＋ New</button>
+    </div>
+
+    <div class="main">
+      <div class="header">
+        <span id="userEmail"></span>
+        <button onclick="logout()">Logout</button>
+      </div>
+
+      <div id="chat" class="chat"></div>
+
+      <div class="input-bar">
+        <input id="textInput" placeholder="Type a message…" onkeydown="handleEnter(event)">
+        <button onclick="sendText()">➤</button>
+        <button onclick="toggleMic()" id="micBtn">🎙</button>
+      </div>
+    </div>
+  </div>
+<script src="app.js"></script>
+</body>
+</html>
