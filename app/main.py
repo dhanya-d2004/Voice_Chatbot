@@ -3,7 +3,7 @@ from app.api.voice import router as voice_router
 from app.api.auth import router as auth_router
 from app.api.text import router as text_router
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, voice_ws 
+from app.api import auth, voice_ws, document
 app = FastAPI(title="Voice AI")
 
 app.add_middleware(
@@ -24,3 +24,4 @@ app.include_router(text_router)
 app.include_router(auth_router)
 app.include_router(voice_router)
 app.include_router(voice_ws.router)
+app.include_router(document.router)
