@@ -98,3 +98,6 @@ button {
   color: white;
   cursor: pointer;
 }
+button {
+  min-width: 44px;
+}

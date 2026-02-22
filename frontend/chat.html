@@ -22,10 +22,28 @@
       <div id="chat" class="chat"></div>
 
       <div class="input-bar">
-        <input id="textInput" placeholder="Type a message…" onkeydown="onEnter(event)">
-        <button onclick="sendText()">➤</button>
-        <button id="micBtn" onclick="toggleMic()">🎙</button>
-      </div>
+  <input
+    id="textInput"
+    placeholder="Type a message…"
+    onkeydown="onEnter(event)"
+  />
+
+  <!-- 📎 hidden file input -->
+  <input
+    type="file"
+    id="docInput"
+    accept=".pdf,.docx,.pptx,.txt,.jpg,.jpeg,.png"
+    style="display:none"
+    onchange="uploadDocument()"
+  />
+
+  <!-- 📎 upload button -->
+  <button onclick="document.getElementById('docInput').click()">📎</button>
+
+  <button onclick="sendText()">➤</button>
+  <button id="micBtn" onclick="toggleMic()">🎙</button>
+</div>
+
     </div>
   </div>
 

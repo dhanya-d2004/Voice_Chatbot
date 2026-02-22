@@ -228,6 +228,65 @@ async function sendText() {
   renderChat();
 }
 
+async function uploadDocument() {
+  if (!activeConversation) newConversation();
+
+  const input = document.getElementById("docInput");
+  if (!input.files.length) return;
+
+  const file = input.files[0];
+  input.value = ""; // reset picker
+
+  // 📄 show system message
+  activeConversation.messages.push({
+    role: "assistant",
+    content: `📄 Uploading document: ${file.name}...`
+  });
+  renderChat();
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  let url = `${API}/api/document/upload`;
+  if (activeConversation.id) {
+    url += `?conversation_id=${activeConversation.id}`;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Upload failed");
+    }
+
+    // 🔑 backend may create conversation
+    if (!activeConversation.id) {
+      activeConversation.id = data.conversation_id;
+    }
+
+    activeConversation.messages.push({
+      role: "assistant",
+      content: `✅ Document uploaded: ${file.name}\nChunks stored: ${data.chunks_stored}`
+    });
+  } catch (err) {
+    console.error(err);
+    activeConversation.messages.push({
+      role: "assistant",
+      content: `❌ Document upload failed: ${err.message}`
+    });
+  }
+
+  renderChat();
+}
+
 /* ---------------- VOICE ---------------- */
 
 let ws, audioContext, processor, stream;
@@ -316,3 +375,4 @@ window.signup = signup;
 window.logout = logout;
 window.sendText = sendText;
 window.toggleMic = toggleMic;
+window.uploadDocument = uploadDocument;
