@@ -26,6 +26,6 @@ def query_llm(prompt: str) -> str:
         },
     }
 
-    r = requests.post(OLLAMA_URL, json=payload, timeout=200)
+    r = requests.post(OLLAMA_URL, json=payload, timeout=300)
     r.raise_for_status()
     return r.json()["response"].strip()

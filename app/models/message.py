@@ -1,13 +1,25 @@
-from sqlalchemy import Column, Integer, ForeignKey, Text, String, DateTime
+# app/models/message.py
+import uuid
+from sqlalchemy import Column, Text, ForeignKey, DateTime
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from app.db.session import Base
 from pgvector.sqlalchemy import Vector
+
+from app.db.session import Base
+
+
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(Integer, primary_key=True)
-    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
-    role = Column(String, nullable=False)  # user | assistant
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    conversation_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    role = Column(Text, nullable=False)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
     embedding = Column(Vector(768))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
